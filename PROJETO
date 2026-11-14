@@ -1,0 +1,36 @@
+<!doctype html>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Conectar a ZUMY</title>
+<h1>Conectar a ZUMY</h1>
+<form id="painel">
+  <p><label>Senha do painel<br><input name="senha" type="password" required></label></p>
+  <p><label>WhatsApp com 55 e DDD<br><input name="numero" type="tel" required></label></p>
+  <button>Gerar código de pareamento</button>
+</form>
+<p id="aviso" role="status"></p>
+<script>
+const form = document.querySelector('#painel');
+const aviso = document.querySelector('#aviso');
+
+form.onsubmit = async evento => {
+  evento.preventDefault();
+  const botao = form.querySelector('button');
+  botao.disabled = true;
+  aviso.textContent = 'Aguardando o WhatsApp…';
+  try {
+    const resposta = await fetch('/api/connect', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-admin-token': form.senha.value.trim()
+      },
+      body: JSON.stringify({phone: form.numero.value.replace(/\D/g, '')})
+    });
+    const dados = await resposta.json();
+    aviso.textContent = dados.error || (dados.code ? 'Código: ' + dados.code :
+      dados.status === 'connected' ? 'WhatsApp já conectado.' : 'Tente novamente.');
+  } catch {
+    aviso.textContent = 'O servidor não respondeu. Confira o deploy no Render.';
+  } finally {
+  
