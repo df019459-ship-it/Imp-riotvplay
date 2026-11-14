@@ -33,4 +33,7 @@ form.onsubmit = async evento => {
   } catch {
     aviso.textContent = 'O servidor não respondeu. Confira o deploy no Render.';
   } finally {
-  
+      botao.disabled = false;
+  }
+};
+</script>
