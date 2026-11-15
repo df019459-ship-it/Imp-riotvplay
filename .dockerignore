@@ -1,5 +1,5 @@
-.env
-auth
 node_modules
+session
+.env
 .git
-painel-netlify
+*.zip
