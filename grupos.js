@@ -197,3 +197,10 @@ export function createGroups(folder){
    }
  };
 }
+if (cmd === 'ping') {
+  return reply('🏓 Pong! ZUMY online.');
+}
+
+if (cmd === 'menu') {
+  return reply(menu(Number(arg)));
+}
