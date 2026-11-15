@@ -1,11 +1,11 @@
 import 'dotenv/config';
+import { createGroups } from './grupos.js';
 
 import express from 'express';
-import { respostas } from './loja.js';
 import pino from 'pino';
 import QRCode from 'qrcode';
 import { timingSafeEqual } from 'node:crypto';
-import { mkdir } from 'node:fs/promises';
+import { mkdir, readFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 
 import makeWASocket, {
@@ -32,6 +32,7 @@ if (ADMIN_TOKEN.length < 24) {
   process.exit(1);
 }
 
+const handleGroup = createGroups(resolve(process.env.GROUP_DATA_DIR || SESSION_DIR + '/zumy-grupos'));
 let socket = null;
 let authState = null;
 let status = 'offline';
@@ -200,25 +201,7 @@ async function startSocket() {
       for (const msg of messages || []) {
         try {
           if (!msg?.message || msg.key?.fromMe) continue;
-          const jid = msg.key?.remoteJid;
-          if (!jid || !/@(s.whatsapp.net|lid)$/.test(jid)) continue;
-
-          let content = msg.message;
-          content = content.ephemeralMessage?.message
-            || content.viewOnceMessage?.message
-            || content.viewOnceMessageV2?.message
-            || content;
-
-          const text = content.conversation
-            || content.extendedTextMessage?.text
-            || content.imageMessage?.caption
-            || content.videoMessage?.caption
-            || '';
-
-          for (const payload of respostas(text, Boolean(content.imageMessage || content.documentMessage))) {
-            if (socket !== sock) break;
-            await sock.sendMessage(jid, payload, { quoted: msg });
-          }
+          if (socket === sock) await handleGroup(sock, msg);
         } catch (error) {
           log.error({ err: error }, 'Erro ao processar mensagem');
         }
@@ -374,6 +357,12 @@ async function shutdown(signal) {
 process.once('SIGINT', () => shutdown('SIGINT'));
 process.once('SIGTERM', () => shutdown('SIGTERM'));
 
-if (AUTO_CONNECT) {
+async function hasSavedSession() {
+  try {
+    const creds = JSON.parse(await readFile(resolve(SESSION_DIR,'creds.json'), 'utf8'));
+    return Boolean(creds.registered || creds.me?.id);
+  } catch { return false; }
+}
+if (AUTO_CONNECT || await hasSavedSession()) {
   startSocket().catch(error => log.error({ err: error }, 'Conexão automática falhou'));
 }
